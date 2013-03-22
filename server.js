@@ -83,6 +83,7 @@ d.run(function() {
 					return name.match(/\.js$/);
 				})
 				.forEach(function(name) {
+					log('client',ws.wsid,'require ', name);
 					ws.handlers[name.replace(/\.js$/,'')] =
 						require('./lib/plugins/server/'+name);
 				});
@@ -102,6 +103,7 @@ d.run(function() {
 				});
 				return;
 			}
+
 			try {
 				var json = JSON.parse(msg);
 				var type = json.type;

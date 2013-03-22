@@ -97,7 +97,7 @@ function byteformat(value) {
 		return numformat(value / g) + 'G';
 	}
 
-}	
+}
 
 function kmgformat(value) {
 
@@ -189,7 +189,9 @@ Host.prototype = {
 		var spans = self.spans;
 		var bars = self.bars;
 		self.dstat = data;
-		
+
+		console.log(data);
+
 		// Name
 		if (data.name) {
 			spans.name.host.text(data.name);
@@ -218,7 +220,7 @@ Host.prototype = {
 				label: (100-data.cpu.idle) + '%'
 			});
 		}
-		
+
 		// Load
 		if (data.load) {
 			var load = data.load['1m'];
@@ -235,13 +237,13 @@ Host.prototype = {
 				label: String(load)
 			});
 		}
-		
+
 		// Disk
 		if (data.disk) {
 			spans.disk.write.text(byteformat(data.disk.write));
 			spans.disk.read.text(byteformat(data.disk.read));
 		}
-		
+
 		// Memory
 		if (data.memory) {
 			bars.memory.update({
@@ -261,7 +263,7 @@ Host.prototype = {
 				label: byteformat(data.memory.free)
 			});
 		}
-		
+
 		// Network
 		if (data.net) {
 			spans.network.recv.text(byteformat(data.net.recv));
@@ -272,6 +274,7 @@ Host.prototype = {
 			spans.network.active.text(kmgformat(data.tcp.active));
 			spans.network.timewait.text(kmgformat(data.tcp.timewait));
 		}
+
 	}
 };
 
@@ -281,7 +284,7 @@ function Category(name) {
 	this.hosts = [];
 	this.header = $.tag('div')
 		.tag('h3').text(name).gat();
-		
+
 	var table = this.table = $.tag('table.table.table-bordered.table-striped.table-condensed.stat-group', {id:'category-'+name});
 	var thead = this.thead = $.tag('thead');
 	thead
@@ -290,7 +293,7 @@ function Category(name) {
 			.tag('span').text('Hosts').attr('title','Hostname / IP').tooltip().gat().gat()
 		.tag('th')
 			.tag('span').text('CPU').attr('title','Idle / User / System / IOWait').tooltip().gat().gat()
-		
+
 		.tag('th').text('Load').gat()
 		.tag('th')
 			.tag('span').text('Disk')
@@ -381,7 +384,9 @@ Category.prototype = {
 		data.cpu.iowait = Math.round(data.cpu.iowait / hostlen);
 		data.cpu.idle = (100 - data.cpu.user - data.cpu.system - data.cpu.iowait);
 		data.load['1m'] = Math.round(data.load['1m'] / hostlen * 100) / 100;
-		
+
+		console.log('Category update');
+		console.log(data);
 		this.total.update(data);
 	}
 };

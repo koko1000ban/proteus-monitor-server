@@ -57,7 +57,7 @@ socket.register({
 			}
 			// hosts
 			// subscribing dstat updates
-			this.subscribe('stat', 'ps');
+			this.subscribe('stat', 'ps', 'diskusage');
 		}
 	},
 	stat: {
@@ -76,6 +76,14 @@ socket.register({
 			var host = hosts[data.name];
 			if (host) {
 				host.updateps(data.data);
+			}
+		}
+	},
+	diskusage: {
+		update: function(data){
+			var host = hosts[data.name];
+			if (host) {
+				host.update_diskusage(data.data);
 			}
 		}
 	}
@@ -117,7 +125,7 @@ function byteformat(value) {
 		return numformat(value / g) + 'G';
 	}
 
-}	
+}
 
 function kmgformat(value) {
 
@@ -141,6 +149,14 @@ function kmgformat(value) {
 
 }
 
+function gbformat(value){
+	if (value === undefined || value === NaN) {
+		return '0';
+	}
+
+	return numformat(value) + 'G';
+}
+
 function Host(data, category) {
 	this.name = data.name;
 	this.address = data.address;
@@ -153,8 +169,10 @@ function Host(data, category) {
 		disk: $.tag('td.disk'),
 		memory: $.tag('td.memory'),
 		network: $.tag('td.network'),
-		process: $.tag('td.process')
+		process: $.tag('td.process'),
+		diskusage: $.tag('td.diskusage')
 	};
+
 	var spans = this.spans = {
 		name: {
 			host: data.summary ? $.tag('span.host').text(data.name) : $.tag('span.host').tag('a').text(data.name).gat(),
@@ -170,12 +188,14 @@ function Host(data, category) {
 			active: $.tag('span.active'),
 			timewait: $.tag('span.timewait')
 		}
-	}
+	};
+
 	var bars = this.bars = {
 		cpu: new monitor.charts.Bar(100,18),
 		load: new monitor.charts.Bar(50,18),
-		memory: new monitor.charts.Bar(100,18),
+		memory: new monitor.charts.Bar(100,18)
 	};
+
 	tr
 	.append(tds.name
 			.append(spans.name.host)
@@ -194,6 +214,7 @@ function Host(data, category) {
 			.append(spans.network.active)
 			.append(spans.network.timewait)
 	)
+	.append(tds.diskusage)
 	.append(tds.process)
 	;
 	var self = this;
@@ -216,7 +237,7 @@ Host.prototype = {
 		var spans = self.spans;
 		var bars = self.bars;
 		self.stat = data;
-		
+
 		// Name
 		if (data.name) {
 			spans.name.host.text(data.name);
@@ -246,7 +267,7 @@ Host.prototype = {
 				label: (100-cpu.idle) + '%'
 			});
 		}
-		
+
 		// Load
 		if (data.load) {
 			var load = data.load[0];
@@ -265,13 +286,13 @@ Host.prototype = {
 				label: String(load)
 			});
 		}
-		
+
 		// Disk
 		if (data.disk) {
 			spans.disk.read.text(byteformat(data.disk.total.read.sector*512));
 			spans.disk.write.text(byteformat(data.disk.total.write.sector*512));
 		}
-		
+
 		// Memory
 		if (data.mem) {
 			data.mem.used = data.mem.total - data.mem.free - data.mem.cached - data.mem.buffer;
@@ -292,7 +313,7 @@ Host.prototype = {
 				label: byteformat(data.mem.used*1024)
 			});
 		}
-		
+
 		// Network
 		if (data.net) {
 			spans.network.recv.text(byteformat(data.net.total.receive));
@@ -314,6 +335,19 @@ Host.prototype = {
 				td.tag('span.fail').text(name).gat();
 			}
 		}
+	},
+	update_diskusage: function(data){
+		var self = this;
+		var tds = this.tds;
+		var td = tds.diskusage;
+
+		td.empty();
+
+		td.tag('span.use').text(data.use + '%').gat();
+		td.tag('span.used').text(gbformat(data.used)).gat();
+		td.tag('span.split').text('/').gat();
+		td.tag('span.size').text(gbformat(data.size)).gat();
+
 	}
 };
 
@@ -367,10 +401,10 @@ function Category(name) {
 			.tag('span')
 				.text('Memory')
 				.attr('title',labelTooltip([
-										   { name: 'free', color: color.rgbhex.normal },
-										   { name: 'cache', color: color.rgbhex.safe },
-										   { name: 'notice', color: color.rgbhex.notice },
-										   { name: 'used', color: color.rgbhex.warn }
+												{ name: 'free', color: color.rgbhex.normal },
+												{ name: 'cache', color: color.rgbhex.safe },
+												{ name: 'notice', color: color.rgbhex.notice },
+												{ name: 'used', color: color.rgbhex.warn }
 				]))
 				.tooltip({html:true})
 			.gat()
@@ -380,6 +414,18 @@ function Category(name) {
 				.text('Network')
 				.attr('title','Receive / Send')
 				.tooltip()
+			.gat()
+		.gat()
+		.tag('th')
+			.tag('span')
+				.text('DiskUsage')
+				.attr('title', labelTooltip([
+											{ name: 'size', color: color.rgbhex.normal },
+											{ name: 'used', color: color.rgbhex.warn },
+											{ name: 'avail', color: color.rgbhex.notice },
+											{ name: 'use', color: color.rgbhex.fatal }
+				]))
+				.tooltip({html:true})
 			.gat()
 		.gat()
 		.tag('th')
@@ -666,7 +712,7 @@ HostDetail.prototype = {
 				}],
 				label: (100-cpu.idle) + '%'
 			});
-		}	
+		}
 		for (i = 0; i < 3; i++) {
 			var load = stat.load[i];
 			load = Math.round(load*100)/100;
